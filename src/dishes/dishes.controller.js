@@ -8,6 +8,8 @@ const nextId = require("../utils/nextId");
 
 // TODO: Implement the /dishes handlers needed to make the tests pass
 
+//create, read, update, and list
+
 function list(req, res, next) {
   res.json({ data: dishes });
 }
@@ -49,8 +51,50 @@ function create(req, res) {
   return res.status(201).json({ data: newDish });
 }
 
+function dishExists(req, res, next) {
+  const { dishId } = req.params;
+  const foundDish = dishes.find((dish) => dish.id === dishId);
+  if (foundDish) {
+    res.locals.dish = foundDish;
+    return next();
+  }
+  next({
+    status: 404,
+    message: `Dish id not found: ${dishId}`,
+  });
+}
+
+function idMatches(req, res, next) {
+  const { dishId } = req.params;
+  const { data: { id } = {} } = req.body;
+  if (!id || id.length === 0 || dishId == id) {
+    next();
+  }
+  next({
+    status: 400,
+    message: `Dish id does not match route id. Dish: ${id}, Route: ${dishId}`,
+  });
+}
+
+function read(req, res, next) {
+  res.json({ data: res.locals.dish });
+}
+
+function update(req, res) {
+  const dish = res.locals.dish;
+  const { data: { name, description, price, image_url } = {} } = req.body;
+
+  dish.name = name;
+  dish.description = description;
+  dish.price = price;
+  dish.image_url = image_url;
+
+  res.json({ data: dish });
+}
+
 module.exports = {
   list,
+  read: [dishExists, read],
   create: [
     bodyDataHas("name"),
     bodyDataHas("price"),
@@ -58,5 +102,15 @@ module.exports = {
     bodyDataHas("image_url"),
     priceIsValid,
     create,
+  ],
+  update: [
+    dishExists,
+    idMatches,
+    bodyDataHas("name"),
+    bodyDataHas("price"),
+    bodyDataHas("description"),
+    bodyDataHas("image_url"),
+    priceIsValid,
+    update,
   ],
 };
